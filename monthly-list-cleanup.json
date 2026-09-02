@@ -6,7 +6,7 @@
       "mode": "row-based"
     },
     "columnName": "Column 1",
-    "expression": "value.trim()",
+    "expression": "grel:value.trim()",
     "onError": "keep-original",
     "repeat": false,
     "repeatCount": 10,
@@ -19,7 +19,7 @@
       "mode": "row-based"
     },
     "baseColumnName": "Column 1",
-    "expression": "grel:if(value.contains(/^\\d{3}/),value + \" \" + cross(row.index + 1, \"\", \"\")[0].cells['Column 1'].value,\"\")",
+    "expression": "grel:if(value.contains(/^\\d{3}/), value + \" \" + cross(row.index + 1, \"\", \"\").get(0).cells.get('Column 1').value, \"\")",
     "onError": "set-to-blank",
     "newColumnName": "Tag value",
     "columnInsertIndex": 1,
@@ -37,7 +37,7 @@
         {
           "type": "list",
           "name": "Tag value",
-          "expression": "isBlank(value)",
+          "expression": "grel:isBlank(value)",
           "columnName": "Tag value",
           "invert": false,
           "omitBlank": false,
@@ -65,7 +65,7 @@
       "mode": "row-based"
     },
     "baseColumnName": "Tag value",
-    "expression": "grel:if(value.contains(\"CHANGE HEADING\"),value,\"\")",
+    "expression": "grel:if(value.contains(\"CHANGE HEADING\"), value, \"\")",
     "onError": "set-to-blank",
     "newColumnName": "Old subject",
     "columnInsertIndex": 1,
@@ -78,11 +78,24 @@
       "mode": "row-based"
     },
     "baseColumnName": "Tag value",
-    "expression": "grel:if(value.contains(\"CHANGE HEADING\"),cross(row.index + 1, \"\", \"\")[0].cells['Tag value'].value,\"\")",
+    "expression": "grel:if(value.contains(\"CHANGE HEADING\"), cross(row.index + 1, \"\", \"\").get(0).cells.get('Tag value').value, \"\")",
     "onError": "set-to-blank",
     "newColumnName": "New subject",
     "columnInsertIndex": 1,
     "description": "Create column New subject by looking for cells in Tag value column that contain the string 'CHANGE HEADING' and then taking the cell immediately below"
+  },
+  {
+    "op": "commons/text-transform",
+    "engineConfig": {
+      "facets": [],
+      "mode": "row-based"
+    },
+    "columnName": "Old subject",
+    "expression": "grel:if(isBlank(value),if(cells[\"Tag value\"].value.contains(\"CANCEL HEADING\"),cells[\"Tag value\"].value,\"\"),value)",
+    "onError": "keep-original",
+    "repeat": false,
+    "repeatCount": 10,
+    "description": "Add additional cells to Old subject column, by looking for cells in Tag value column that contain the string 'CANCEL HEADING'"
   },
   {
     "op": "commons/column-addition",
@@ -91,11 +104,11 @@
       "mode": "row-based"
     },
     "baseColumnName": "Old subject",
-    "expression": "grel:value.substring(0,3)",
+    "expression": "grel:value.substring(0, 3)",
     "onError": "set-to-blank",
     "newColumnName": "Old tag",
     "columnInsertIndex": 3,
-    "description": "Create column Old tag at index 3 based on column Old subject using expression grel:value.substring(0,3)"
+    "description": "Create column Old tag at index 3 based on column Old subject using expression grel:value.substring(0, 3)"
   },
   {
     "op": "commons/column-addition",
@@ -104,11 +117,11 @@
       "mode": "row-based"
     },
     "baseColumnName": "New subject",
-    "expression": "grel:value.substring(0,3)",
+    "expression": "grel:value.substring(0, 3)",
     "onError": "set-to-blank",
     "newColumnName": "New tag",
     "columnInsertIndex": 2,
-    "description": "Create column New tag at index 2 based on column New subject using expression grel:value.substring(0,3)"
+    "description": "Create column New tag at index 2 based on column New subject using expression grel:value.substring(0, 3)"
   },
   {
     "op": "commons/column-addition",
@@ -126,11 +139,34 @@
   {
     "op": "commons/text-transform",
     "engineConfig": {
+      "facets": [
+        {
+          "type": "text",
+          "name": "Old subject",
+          "columnName": "Old subject",
+          "query": "[sp",
+          "mode": "text",
+          "caseSensitive": false,
+          "invert": false
+        }
+      ],
+      "mode": "row-based"
+    },
+    "columnName": "Subject id",
+    "expression": "grel:cells['Old subject'].value.substring(cells['Old subject'].value.indexOf(\"[sp\"))",
+    "onError": "keep-original",
+    "repeat": false,
+    "repeatCount": 10,
+    "description": "Add subject ids for cancelled subjects by faceting Old subject column to cells that contain '[sp' and extracting the id"
+  },
+  {
+    "op": "commons/text-transform",
+    "engineConfig": {
       "facets": [],
       "mode": "row-based"
     },
     "columnName": "Subject id",
-    "expression": "grel:value.chomp(\"]\").substring(1).replace(\" \",\"\")",
+    "expression": "grel:value.chomp(\"]\").substring(1).replace(\" \", \"\")",
     "onError": "keep-original",
     "repeat": false,
     "repeatCount": 10,
@@ -143,11 +179,37 @@
       "mode": "row-based"
     },
     "baseColumnName": "Subject id",
-    "expression": "grel:\"https://id.loc.gov/authorities/subjects/\" + value.replace(\"sp\",\"sh\") + \".html\"",
+    "expression": "grel:\"https://id.loc.gov/authorities/subjects/\" + value.replace(\"sp\", \"sh\") + \".html\"",
     "onError": "set-to-blank",
     "newColumnName": "id.loc link",
     "columnInsertIndex": 3,
     "description": "Create column id.loc link by replacing 'sp' with 'sh' in the id and combining it with the rest of the URL"
+  },
+  {
+    "op": "commons/column-addition",
+    "engineConfig": {
+      "facets": [],
+      "mode": "row-based"
+    },
+    "baseColumnName": "Old subject",
+    "expression": "grel:if(value.contains(\"CANCEL HEADING\"),cross(row.index + 1, \"\", \"\")[0].cells['Tag value'].value,\"\")",
+    "onError": "set-to-blank",
+    "newColumnName": "Cancel reason",
+    "columnInsertIndex": 7,
+    "description": "Create column Cancel reason by looking for cells that contain 'CANCEL HEADING' and taking the cell below in Tag value column"
+  },
+  {
+    "op": "commons/text-transform",
+    "engineConfig": {
+      "facets": [],
+      "mode": "row-based"
+    },
+    "columnName": "Cancel reason",
+    "expression": "grel:value.substring(4)",
+    "onError": "keep-original",
+    "repeat": false,
+    "repeatCount": 10,
+    "description": "Clean up Cancel reason column by removing tag from beginning"
   },
   {
     "op": "commons/row-removal",
@@ -155,9 +217,9 @@
       "facets": [
         {
           "type": "list",
-          "name": "New subject",
+          "name": "Old subject",
           "expression": "isBlank(value)",
-          "columnName": "New subject",
+          "columnName": "Old subject",
           "invert": false,
           "omitBlank": false,
           "omitError": false,
@@ -175,12 +237,35 @@
       ],
       "mode": "row-based"
     },
-    "description": "Remove blank rows"
+    "description": "Remove rows that don't contain a changed or canceled heading"
+  },
+  {
+    "op": "commons/column-addition",
+    "engineConfig": {
+      "facets": [],
+      "mode": "row-based"
+    },
+    "baseColumnName": "Old subject",
+    "expression": "grel:if(value.contains(\"CHANGE HEADING\"),\"Change\",\"Cancel\")",
+    "onError": "set-to-blank",
+    "newColumnName": "Action",
+    "columnInsertIndex": 7,
+    "description": "Create column Action based on column Old subject, by checking if the cell contains 'CHANCE HEADING' and entering either 'Change' or 'Cancel' accordingly"
   },
   {
     "op": "commons/text-transform",
     "engineConfig": {
-      "facets": [],
+      "facets": [
+        {
+          "type": "text",
+          "name": "Old subject",
+          "columnName": "Old subject",
+          "query": "change heading",
+          "mode": "text",
+          "caseSensitive": false,
+          "invert": false
+        }
+      ],
       "mode": "row-based"
     },
     "columnName": "Old subject",
@@ -188,7 +273,30 @@
     "onError": "keep-original",
     "repeat": false,
     "repeatCount": 10,
-    "description": "Clean up values in column Old subject by removing 3 digit tags, 'CHANGE HEADING' string, and trimming whitespace"
+    "description": "Clean up values in column Old subject that contain 'CHANGE HEADING' by removing 3 digit tags, 'CHANGE HEADING' string, and trimming whitespace"
+  },
+  {
+    "op": "commons/text-transform",
+    "engineConfig": {
+      "facets": [
+        {
+          "type": "text",
+          "name": "Old subject",
+          "columnName": "Old subject",
+          "query": "cancel heading",
+          "mode": "text",
+          "caseSensitive": false,
+          "invert": false
+        }
+      ],
+      "mode": "row-based"
+    },
+    "columnName": "Old subject",
+    "expression": "grel:value.substring(4,(value.indexOf(\"[\"))).replace(\"CANCEL HEADING\",\"\").trim()",
+    "onError": "keep-original",
+    "repeat": false,
+    "repeatCount": 10,
+    "description": "Clean up values in column Old subject that contain 'CANCEL HEADING' by removing 3 digit tags, everything after the first instance of an opening square bracket, 'CANCEL HEADING' string, and trimming whitespace"
   },
   {
     "op": "commons/text-transform",
@@ -197,7 +305,7 @@
       "mode": "row-based"
     },
     "columnName": "New subject",
-    "expression": "grel:value.substring(4,value.indexOf(\"[\")).trim()",
+    "expression": "grel:value.substring(4,(value.indexOf(\"[\"))).trim()",
     "onError": "keep-original",
     "repeat": false,
     "repeatCount": 10,
@@ -209,14 +317,16 @@
     "description": "Remove column Tag value"
   },
   {
-    "op": "core/column-reorder",
+    "op": "commons/column-reorder",
     "columnNames": [
+      "Action",
       "Subject id",
       "Old tag",
       "Old subject",
       "New tag",
       "New subject",
-      "id.loc link"
+      "id.loc link",
+      "Cancel reason"
     ],
     "description": "Reorder columns"
   }
